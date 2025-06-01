@@ -72,11 +72,21 @@
             color: white;
             box-shadow: inset 0 1px 3px rgba(0,0,0,0.3);
         }
+
+        /* WebSocket connection status styling */
+        #status {
+            font-size: 20px;
+            margin-top: 20px;
+            text-align: center;
+            width: 100%;
+        }
     </style>
 </head>
 <body>
-    <h1>WebSocket Keyboard</h1>
-
+    <div>
+        <h1>WebSocket Keyboard</h1>
+        <div id="status"></div>
+    </div>
     <div id="keyboard"></div>
 
     <script>
@@ -84,8 +94,15 @@
         function connectWebSocket() {
             ws = new WebSocket('ws://' + new URLSearchParams(location.search).get("target"));
 
+            // Connection status element
+            let statusDiv = document.getElementById('status');
+
             ws.onopen = function() {
                 console.log('WebSocket connection opened');
+                if (statusDiv) {
+                    statusDiv.textContent = 'Connection: Opened';
+                    statusDiv.style.color = '#34c759'; // Green color
+                }
             };
 
             ws.onmessage = function(event) {
@@ -93,8 +110,27 @@
                 console.log('Received: ' + message);
             };
 
+            let reconnectAttempts = 0;
+            const maxReconnectAttempts = 5;
+            const reconnectDelay = 2000; // milliseconds
+
             ws.onclose = function() {
                 console.log('WebSocket connection closed');
+                if (statusDiv) {
+                    statusDiv.textContent = 'Connection: Closed';
+                    statusDiv.style.color = '#ff3b30'; // Red color
+                }
+
+                // Try to reconnect
+                if (reconnectAttempts < maxReconnectAttempts) {
+                    console.log(`Attempting to reconnect... (${reconnectAttempts + 1}/${maxReconnectAttempts})`);
+                    setTimeout(() => {
+                        connectWebSocket();
+                        reconnectAttempts++;
+                    }, reconnectDelay);
+                } else {
+                    console.log('Max reconnection attempts reached');
+                }
             };
         }
 
