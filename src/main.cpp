@@ -1,11 +1,16 @@
 #include <Arduino.h>
 #include <WiFi.h>
 #include <WebServer.h>
+#include "secrets.h" // For Wi-Fi credentials
 
-// Include your secrets file
-#include "secrets.h" // This line brings in SECRET_SSID and SECRET_PASSWORD
+#include <BleKeyboard.h> // For Bluetooth HID
 
-WebServer server(80); // Create a web server on port 80
+// --- Web Server Setup ---
+WebServer server(80);
+
+// Create a BleKeyboard object.
+// You can customize the device name, manufacturer, and initial battery level.
+BleKeyboard bleKeyboard("ESP32 HID", "Espressif", 100);
 
 void handleRoot() {
   server.send(200, "text/html", "<h1>Hello from ESP32 Web Server!</h1><p>This is a simple web page.</p>");
@@ -19,10 +24,26 @@ void handleApiHello() {
   server.send(200, "application/json", "{\"message\": \"Hello from API!\"}");
 }
 
+// --- NEW: API endpoint for triggering typing ---
+void handleTypeTrigger() {
+  if (bleKeyboard.isConnected()) {
+    Serial.println("Received API request to type. Sending 'Hello API!' via BLE.");
+    bleKeyboard.print("Hello API!"); // Sends "Hello API!" as if typed
+    bleKeyboard.write(KEY_RETURN);    // Presses Enter after typing
+
+    server.send(200, "text/plain", "Bluetooth HID: Typed 'Hello API!'.");
+  } else {
+    Serial.println("Received API request, but BLE Keyboard is not connected.");
+    server.send(503, "text/plain", "Bluetooth HID not connected. Please pair the device first.");
+  }
+}
+// --- End NEW API endpoint ---
+
+
 void setup() {
   Serial.begin(115200);
 
-  // Connect to Wi-Fi using credentials from secrets.h
+  // --- Wi-Fi Connection ---
   Serial.print("Connecting to WiFi");
   WiFi.begin(SECRET_SSID, SECRET_PASSWORD);
   while (WiFi.status() != WL_CONNECTED) {
@@ -33,16 +54,21 @@ void setup() {
   Serial.print("Connected to WiFi with IP: ");
   Serial.println(WiFi.localIP());
 
-  // Define web server routes
+  // --- Web Server Initialization ---
   server.on("/", handleRoot);
   server.on("/api/hello", handleApiHello);
-  server.onNotFound(handleNotFound); // Handle unknown paths
-
-  // Start the server
+  server.on("/type", handleTypeTrigger); // Register the new API endpoint
+  server.onNotFound(handleNotFound);
   server.begin();
   Serial.println("HTTP server started");
+
+  // --- Bluetooth HID Initialization ---
+  Serial.println("Starting BLE Keyboard...");
+  bleKeyboard.begin(); // This starts the BLE advertising
+  Serial.println("BLE Keyboard started. Ready to pair.");
 }
 
+
 void loop() {
-  server.handleClient(); // Handle incoming client requests
+  server.handleClient(); // Continuously handle incoming web server requests
 }
