@@ -20,10 +20,6 @@ void handleNotFound() {
   server.send(404, "text/plain", "Not found");
 }
 
-void handleApiHello() {
-  server.send(200, "application/json", "{\"message\": \"Hello from API!\"}");
-}
-
 // --- NEW: API endpoint for triggering typing ---
 void handleTypeTrigger() {
   if (bleKeyboard.isConnected()) {
@@ -56,7 +52,6 @@ void setup() {
 
   // --- Web Server Initialization ---
   server.on("/", handleRoot);
-  server.on("/api/hello", handleApiHello);
   server.on("/type", handleTypeTrigger); // Register the new API endpoint
   server.onNotFound(handleNotFound);
   server.begin();
