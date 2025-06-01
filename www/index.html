@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket Example with Full QWERTY Keyboard</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            background-color: #f0f2f5;
+            color: #333;
+            display: flex;
+            margin: 4px;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100dvh; /* Ensure it takes full viewport height */
+            justify-content: space-between;
+        }
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+        }
+
+        #keyboard {
+            width: 100%;
+            background-color: #ecf0f1;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            margin-bottom: 2rem;
+        }
+        .keyboard-row {
+            display: flex;
+            justify-content: center;
+        }
+        .keyboard-key {
+            flex: 1;
+            padding: 12px 0;
+            background-color: #fff;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 18px;
+            font-size: clamp(0.25em, 3vw, 1.2em);
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.1s ease, transform 0.1s ease;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            text-align: center;
+            user-select: none;
+        }
+        @media (hover: hover) {
+            .keyboard-key:hover {
+                background-color: #e0e0e0;
+                transform: translateY(-2px);
+            }
+        }
+        .keyboard-key:active {
+            background-color: #d0d0d0;
+            transform: translateY(0);
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.2);
+        }
+        /* Specific key widths for better keyboard layout */
+        .keyboard-key.wide { flex: 8; } /* Spacebar - slightly wider */
+        .keyboard-key.medium { flex: 2; } /* Tab, Caps Lock, Enter, Shift - now wider */
+        .keyboard-key.extra-wide { flex: 3.5; } /* Backspace - even wider */
+        .keyboard-key.ctrl-alt { flex: 1.5; } /* Ctrl/Alt keys - wider */
+
+        /* Active state for modifier keys */
+        .keyboard-key.active {
+            background-color: #3498db; /* Highlight color when active */
+            color: white;
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.3);
+        }
+    </style>
+</head>
+<body>
+    <h1>WebSocket Keyboard</h1>
+
+    <div id="keyboard"></div>
+
+    <script>
+        let ws;
+        function connectWebSocket() {
+            ws = new WebSocket('ws://' + new URLSearchParams(location.search).get("target"));
+
+            ws.onopen = function() {
+                console.log('WebSocket connection opened');
+            };
+
+            ws.onmessage = function(event) {
+                const message = event.data;
+                console.log('Received: ' + message);
+            };
+
+            ws.onclose = function() {
+                console.log('WebSocket connection closed');
+            };
+        }
+
+        document.addEventListener('DOMContentLoaded', connectWebSocket);
+
+        const keyboardDiv = document.getElementById('keyboard');
+
+        // State variables for modifier keys
+        let isShiftActive = false;
+        let isCapsLockActive = false;
+
+        // Mapping for shifted characters (symbols and numbers)
+        const shiftMap = {
+            '`': '~', '1': '!', '2': '@', '3': '#', '4': '$', '5': '%', '6': '^', '7': '&', '8': '*', '9': '(', '0': ')',
+            '-': '_', '=': '+', '[': '{', ']': '}', '\\': '|', ';': ':', "'": '"', ',': '<', '.': '>', '/': '?'
+        };
+
+        // HID key code mappings
+        const hidMap = {
+            'KEY_LEFT_CTRL': 0x80,
+            'KEY_LEFT_SHIFT': 0x81,
+            'KEY_LEFT_ALT': 0x82,
+            'KEY_LEFT_GUI': 0x83,
+            'KEY_RIGHT_CTRL': 0x84,
+            'KEY_RIGHT_SHIFT': 0x85,
+            'KEY_RIGHT_ALT': 0x86,
+            'KEY_RIGHT_GUI': 0x87,
+
+            'KEY_UP_ARROW': 0xDA,
+            'KEY_DOWN_ARROW': 0xD9,
+            'KEY_LEFT_ARROW': 0xD8,
+            'KEY_RIGHT_ARROW': 0xD7,
+            'KEY_BACKSPACE': 0xB2,
+            'KEY_TAB': 0xB3,
+            'KEY_RETURN': 0xB0,
+            'KEY_ESC': 0xB1,
+            'KEY_INSERT': 0xD1,
+            'KEY_PRTSC': 0xCE,
+            'KEY_DELETE': 0xD4,
+            'KEY_PAGE_UP': 0xD3,
+            'KEY_PAGE_DOWN': 0xD6,
+            'KEY_HOME': 0xD2,
+            'KEY_END': 0xD5,
+            'KEY_CAPS_LOCK': 0xC1,
+
+            // Function keys
+            'KEY_F1': 0xC2, 'KEY_F2': 0xC3, 'KEY_F3': 0xC4, 'KEY_F4': 0xC5,
+            'KEY_F5': 0xC6, 'KEY_F6': 0xC7, 'KEY_F7': 0xC8, 'KEY_F8': 0xC9,
+            'KEY_F9': 0xCA, 'KEY_F10': 0xCB, 'KEY_F11': 0xCC, 'KEY_F12': 0xCD,
+
+            // Numeric keypad keys
+            'KEY_NUM_0': 0xEA, 'KEY_NUM_1': 0xE1, 'KEY_NUM_2': 0xE2,
+            'KEY_NUM_3': 0xE3, 'KEY_NUM_4': 0xE4, 'KEY_NUM_5': 0xE5,
+            'KEY_NUM_6': 0xE6, 'KEY_NUM_7': 0xE7, 'KEY_NUM_8': 0xE8,
+            'KEY_NUM_9': 0xE9, 'KEY_NUM_SLASH': 0xDC, 'KEY_NUM_ASTERISK': 0xDD,
+            'KEY_NUM_MINUS': 0xDE, 'KEY_NUM_PLUS': 0xDF, 'KEY_NUM_ENTER': 0xE0,
+            'KEY_NUM_PERIOD': 0xEB
+        };
+
+        // Helper function to get HID code for a key
+        function getHidCode(key) {
+            switch (key.toUpperCase()) {
+                case 'BACKSPACE': return hidMap.KEY_BACKSPACE;
+                case 'TAB': return hidMap.KEY_TAB;
+                case 'ENTER': return hidMap.KEY_RETURN;
+                case 'SHIFT': return isShiftActive ? hidMap.KEY_RIGHT_SHIFT : hidMap.KEY_LEFT_SHIFT;
+                case 'CTRL': return hidMap.KEY_LEFT_CTRL;
+                case 'ALT': return hidMap.KEY_LEFT_ALT;
+                case 'SUPER': return hidMap.KEY_LEFT_GUI; // Assuming "Super" is the Windows key
+                case 'CAPSLOCK': return hidMap.KEY_CAPS_LOCK;
+                default: return null; // Return null for keys without HID mapping
+            }
+        }
+
+        // Helper function to send WebSocket message with HID code
+        function sendHidMessage(key, eventType) {
+            const hidCode = getHidCode(key) ?? key.charCodeAt(0);
+            if (!ws) return;
+            const uint8 = new Uint8Array(2);
+            uint8[0] = eventType;
+            uint8[1] = hidCode;
+            ws.send(uint8);
+        }
+
+        // Function to update the visual state of all keys (e.g., case for letters)
+        function updateKeyDisplay() {
+            document.querySelectorAll('.keyboard-key').forEach(keyButton => {
+                const originalKey = keyButton.dataset.key; // Get the original key value
+                if (!originalKey) return; // Skip if no original key is set
+
+                let displayChar = originalKey;
+
+                // Logic for letters (a-z)
+                if (originalKey.length === 1 && originalKey.match(/[a-z]/i)) {
+                    // If Caps Lock and Shift are both active OR both inactive, letters are lowercase
+                    // If one is active and the other is inactive (XOR), letters are uppercase
+                    if (isCapsLockActive !== isShiftActive) {
+                        displayChar = originalKey.toUpperCase();
+                    } else {
+                        displayChar = originalKey.toLowerCase();
+                    }
+                }
+                // Logic for symbols/numbers that have shifted counterparts
+                else if (isShiftActive && shiftMap[originalKey]) {
+                    displayChar = shiftMap[originalKey];
+                }
+
+                // Set the text content, handling ' ' for Space key
+                keyButton.textContent = displayChar === ' ' ? 'Space' : displayChar;
+            });
+
+            // Update active state for Shift and CapsLock buttons
+            const shiftKeys = document.querySelectorAll('[data-key="Shift"]');
+            shiftKeys.forEach(key => {
+                if (isShiftActive) {
+                    key.classList.add('active');
+                } else {
+                    key.classList.remove('active');
+                }
+            });
+
+            const capsLockKey = document.querySelector('[data-key="CapsLock"]');
+            if (capsLockKey) {
+                if (isCapsLockActive) {
+                    capsLockKey.classList.add('active');
+                } else {
+                    capsLockKey.classList.remove('active');
+                }
+            }
+        }
+
+        function createKeyboard() {
+            // Full QWERTY keyboard layout including modifier keys
+            const keyboardLayout = [
+                ['`', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '=', 'Backspace'],
+                ['Tab', 'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', '[', ']', '\\'],
+                ['CapsLock', 'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';', "'", 'Enter'],
+                ['Shift', 'z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '/', 'Shift'],
+                ['Ctrl', 'Super', 'Alt', ' ', 'Alt', 'Ctrl'] // Simplified for symmetry, can be adjusted
+            ];
+
+            keyboardLayout.forEach(rowKeys => {
+                const rowDiv = document.createElement('div');
+                rowDiv.classList.add('keyboard-row');
+
+                rowKeys.forEach(key => {
+                    const keyButton = document.createElement('button');
+                    keyButton.classList.add('keyboard-key');
+                    keyButton.textContent = key === ' ' ? 'Space' : key; // Display "Space" for spacebar
+                    keyButton.dataset.key = key; // Store the original key value in a data attribute
+
+                    // Add specific classes for wider keys
+                    if (key === ' ') {
+                        keyButton.classList.add('wide');
+                    } else if (key === 'Backspace') {
+                        keyButton.classList.add('extra-wide');
+                    } else if (key === 'Tab' || key === 'CapsLock' || key === 'Enter' || key === 'Shift') {
+                        keyButton.classList.add('medium');
+                    } else if (key === 'Ctrl' || key === 'Alt' || key === 'Super') {
+                        keyButton.classList.add('ctrl-alt');
+                    }
+
+                    keyButton.addEventListener('pointerdown', () => {
+                        const keyToSend = (isShiftActive && shiftMap[key])
+                            ? shiftMap[key]
+                            : key
+                        ;
+                        sendHidMessage(keyToSend, 51);
+                        navigator.vibrate?.(5);
+                    });
+                    keyButton.addEventListener('pointerup', () => {
+                        const keyToSend = (isShiftActive && shiftMap[key])
+                            ? shiftMap[key]
+                            : key
+                        ;
+                        sendHidMessage(keyToSend, 52);
+                    });
+
+                    keyButton.addEventListener('click', () => {
+                        if (key === 'Backspace') {
+                            // Backspace functionality would go here, but we're not using messageInput anymore
+                        } else if (key === 'Shift') {
+                            isShiftActive = !isShiftActive;
+                            updateKeyDisplay(); // Update all key displays
+                        } else if (key === 'CapsLock') {
+                            isCapsLockActive = !isCapsLockActive;
+                            updateKeyDisplay(); // Update all key displaysx
+                        } else if (key === 'Tab') {
+                            // Tab functionality would go here, but we're not using messageInput anymore
+                        } else if (key === 'Enter') {
+                            // Enter functionality would go here, but we're not sending messages anymore
+                        } else if (key === 'Ctrl' || key === 'Alt') {
+                            console.log(`${key} pressed (no action implemented)`);
+                        } else { // Regular character key
+                            let charToAppend = key;
+                            const isLetter = key.length === 1 && key.match(/[a-z]/i);
+
+                            if (isLetter) {
+                                // Apply case based on Caps Lock and Shift state (XOR logic)
+                                if (isCapsLockActive !== isShiftActive) {
+                                    charToAppend = key.toUpperCase();
+                                } else {
+                                    charToAppend = key.toLowerCase();
+                                }
+                            } else if (isShiftActive && shiftMap[key]) {
+                                // Apply shifted character for symbols/numbers
+                                charToAppend = shiftMap[key];
+                            }
+
+                            // We're not appending to messageInput anymore
+
+                            // If Shift was active, toggle it off after a non-modifier key press
+                            if (isShiftActive && key !== 'Shift' && key !== 'CapsLock') {
+                                isShiftActive = false;
+                                updateKeyDisplay();
+                            }
+                        }
+                    });
+                    rowDiv.appendChild(keyButton);
+                });
+                keyboardDiv.appendChild(rowDiv);
+            });
+            updateKeyDisplay(); // Initial display update
+        }
+
+        window.onload = function() {
+            createKeyboard();
+        };
+    </script>
+</body>
+</html>

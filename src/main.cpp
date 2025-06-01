@@ -20,6 +20,8 @@ WebSocketsServer webSocket = WebSocketsServer(81, "*");
 BleKeyboard bleKeyboard("ESP32 HID", "Espressif", 100);
 
 void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length) {
+  digitalWrite(LED_BUILTIN, HIGH);
+
   switch (type) {
     case WStype_DISCONNECTED:
       Serial.printf("[%u] Disconnected!\n", num);
@@ -32,24 +34,43 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length
       webSocket.sendTXT(num, "Connected");
       break;
     }
-    case WStype_TEXT: {
-      Serial.printf("[%u] get Text: %s\n", num, payload);
-
-      // the first character of payload will either be a or b, which indicates the type of message follow by the message
-      // below, split the payload into type and data
-      char type = payload[0];
-      char data[length - 1]; // subtract one to exclude the first character
-      memcpy(data, &payload[1], length - 1); // copy the rest of the data into the data array
-      // process the message based on its type
-      if (type == '1') {
-        // using blekeyboard to print the remaining data
-        bleKeyboard.print(data);
-      } else if (type == '2') {
-        bleKeyboard.write(KEY_RETURN); // Presses Enter after typing
+    case WStype_BIN: {
+      if (length < 2) {
+        Serial.printf("BINARY:: Payload too short!\n");
+        return;
       }
-      break;
+      char eventType = payload[0];
+      // Declare message variable outside the switch-case construct
+      char* message = nullptr;
+
+      if (eventType == '1') {
+        if (length > 1) {
+          message = new char[length]; // Allocate memory for the message
+          memcpy(message, payload + 1, length - 1); // Copy all characters except the first one
+          message[length - 1] = '\0'; // Null-terminate the string
+
+          printf("Sending message: %s\n", message);
+          bleKeyboard.print(message);
+
+          delete[] message; // Free allocated memory for the message
+        }
+      // write don't use
+      } else {
+        uint8_t hidKeyCode = payload[1]; // Ensure it's interpreted as an integer
+        printf("%c: HID Key Code: %d\n", eventType, hidKeyCode);
+        
+        if (eventType == '2') {
+          bleKeyboard.write(hidKeyCode);
+        } else if (eventType == '3') {
+          bleKeyboard.press(hidKeyCode);
+        } else if (eventType == '4') {
+          bleKeyboard.release(hidKeyCode);
+        }
+      }
     }
   }
+
+  digitalWrite(LED_BUILTIN, LOW);
 }
 
 // Web server setup
@@ -81,6 +102,7 @@ void handleTypeTrigger() {
 
 void setup() {
   Serial.begin(115200);
+  pinMode(LED_BUILTIN, OUTPUT);
 
   // Wi-Fi Connection
   Serial.print("Connecting to WiFi");
