@@ -1,5 +1,11 @@
 # ESP32 BLE HID WebSocket Server
 
+```mermaid
+flowchart LR;
+    A[📱 Client] -->|Send Keystroke via Wi-Fi| B[🤖 ESP32];
+    B --> |Control via Bluetooth HID| C[💻 Target Device];
+```
+
 This project uses an ESP32 as a BLE HID 
 
 device which can be controlled over a WebSocket client. This project demonstrates Wi-Fi connectivity, WebSockets, and BLE HID (Bluetooth Low Energy Human Interface Device) functionality, including a web server for configuration and monitoring.
