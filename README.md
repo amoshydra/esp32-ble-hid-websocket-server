@@ -6,9 +6,7 @@ flowchart LR;
     B --> |Control via Bluetooth HID| C[💻 Target Device];
 ```
 
-This project uses an ESP32 as a BLE HID 
-
-device which can be controlled over a WebSocket client. This project demonstrates Wi-Fi connectivity, WebSockets, and BLE HID (Bluetooth Low Energy Human Interface Device) functionality, including a web server for configuration and monitoring.
+This project uses an ESP32 as a BLE HID device which can be controlled over a WebSocket client. This project demonstrates Wi-Fi connectivity, WebSockets, and BLE HID (Bluetooth Low Energy Human Interface Device) functionality, including a web server for configuration and monitoring.
 
 https://github.com/user-attachments/assets/ce2d48cc-8cc8-4e53-9c0c-9ea3266aab20
 
